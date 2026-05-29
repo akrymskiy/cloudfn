@@ -29,16 +29,20 @@ class MemStream():
 		"""Prints current status"""
 		print(f"{'Writable' if self.writable else 'Read-Only'} {self.compression} {self.raw_size} {self.compressed_size}")
 
-	def write(self, b: bytes):
-		"""Writes bytes to stream"""
+	def write(self, val):
+		"""Writes to stream"""
 		assert self.writable, "No longer writeable!"
 
+		# Support writing strings
+		if isinstance(val, str):
+			return self.writes(val)
+		
 		if self.compressor:
-			self.byte_stream.write(self.compressor.compress(b))
+			self.byte_stream.write(self.compressor.compress(val))
 		else:
-			self.byte_stream.write(b)
+			self.byte_stream.write(val)
 
-		self.raw_size += len(b)
+		self.raw_size += len(val)
 		self.compressed_size = self.byte_stream.tell()
 
 	def writes(self, s: str, encoding='utf-8'):
