@@ -16,7 +16,7 @@ class Payload():
 		@property
 		def records(self):
 			"""S3 Records"""
-			return map(Payload.S3Event.S3Record, self._payload.records)
+			return list(map(Payload.S3Event.S3Record, self._payload.records))
 
 		@property
 		def first(self):
@@ -61,7 +61,7 @@ class Payload():
 		@property
 		def records(self):
 			"""SQS Records"""
-			return map(Payload.SQSEvent.SQSRecord, self._payload.records)
+			return list(map(Payload.SQSEvent.SQSRecord, self._payload.records))
 
 		@property
 		def first(self):
@@ -89,8 +89,8 @@ class Payload():
 
 		@property
 		def records(self):
-			"""NS Records"""
-			return map(Payload.SNSEvent.SNSRecord, self._payload.records)
+			"""SNS Records"""
+			return list(map(Payload.SNSEvent.SNSRecord, self._payload.records))
 
 		@property
 		def first(self):
