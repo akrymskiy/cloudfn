@@ -18,19 +18,21 @@ class LambdaContext:
 		with suppress(Exception):
 			func_path = Path(function_name)
 			if func_path.exists():
+				# Default function name from path: {project_name}_{file_name}
+				self._function_name = f'{func_path.parent.stem}_{func_path.stem}'
+
 				# Check for existence of cfn.json
 				cfn_path = func_path.parent.joinpath('cfn.json')
 				if cfn_path.exists():
 					with open(cfn_path) as f_cfn:
 						cfn = json_load(f_cfn)
-						if 'function_name_template' in cfn:
-							self._function_name = Template(cfn['function_name_template']).safe_substitute({
-								'project_name': cfn.get('project_name', func_path.parent.stem),
-								'file_name': func_path.stem
-							})
-				else:
-					# Default name from path: {project_name}_{file_name}
-					self._function_name = f'{func_path.parent.stem}_{func_path.stem}'
+
+					# Compute function name as deployed
+					if 'function_name_template' in cfn:
+						self._function_name = Template(cfn['function_name_template']).safe_substitute({
+							'project_name': cfn.get('project_name', func_path.parent.stem),
+							'file_name': func_path.stem
+						})
 			else:
 				# Not a valid path - use function_name as-is
 				self._function_name = function_name

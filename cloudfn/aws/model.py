@@ -8,6 +8,7 @@ import inspect
 import json
 import os
 from pathlib import Path
+import re
 from string import Template
 import sys
 import time
@@ -19,6 +20,8 @@ from botocore.exceptions import ClientError
 
 from cloudfn.core.data import coalesce
 from cloudfn.core.util import TestHelper
+
+SSM_SUB_PATTERN = re.compile(r'\"\${ssm:(.+?)}\"')
 
 class LambdaHandler:
 	"""Lambda handler decorator"""
@@ -147,12 +150,36 @@ class LambdaHandler:
 				)
 
 				try:
-					LambdaHandler._config[alias] = json.load(s3_config_obj.get()['Body'])
-
+					# read config
+					config_text = s3_config_obj.get()['Body']
 					log.log('CNFG', 'Read config from S3', {
 						'bucket': s3_config_obj.bucket_name,
 						'key': s3_config_obj.key
 					})
+
+					# check for ssm vars
+					if ssm_names := set(SSM_SUB_PATTERN.findall(config_text)):
+						log.log('CNFG', 'Attempting to inject secrets', {
+							'secrets': ssm_names
+						})
+
+						# init SSM client
+						sec_client = boto3.client('secretsmanager')
+
+						# try to load secrets and inject
+						for ssm_name in ssm_names:
+							secret_response = sec_client.get_secret_value(SecretId=ssm_name)
+							try:
+								# if secret is JSON, inject replacing the string val/quotes
+								json.loads(secret_response['SecretString'])
+								config_text = config_text.replace(f'"${{sm:{ssm_name}}}"', secret_response['SecretString'])
+							except:
+								# not a JSON, inject as string (leave quotes)
+								config_text = config_text.replace(f'${{sm:{ssm_name}}}', secret_response['SecretString'])
+
+					LambdaHandler._config[alias] = json.load(config_text)
+
+					
 				except ClientError as ex:
 					log.log('CNFG', 'Unable to read config from S3', {
 						'bucket': s3_config_obj.bucket_name,
