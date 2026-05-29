@@ -2,6 +2,7 @@
 """cloudfn-core data"""
 
 from datetime import date
+from decimal import Decimal
 import re
 
 def parse_iso_date(val, default=None) -> (date):
@@ -22,24 +23,32 @@ def missing_to_none(val):
 
 	return val
 
-
 def safe_cast_int(val):
 	"""Cast value as int"""
-	if not (val := missing_to_none(val)):
-		return None
-
-	if isinstance(val, (int, float)):
+	if isinstance(val, (int, float, Decimal)):
 		return int(val)
 
-	return int(re.sub('[^.0-9-]', '', str(val)))
+	if not (val := missing_to_none(re.sub('[^.0-9-]', '', str(val)))):
+		return None
 
+	return int(float(val))
 
 def safe_cast_float(val):
 	"""Cast value as float"""
-	if not (val := missing_to_none(val)):
-		return None
-
-	if isinstance(val, (int, float)):
+	if isinstance(val, (int, float, Decimal)):
 		return float(val)
 
-	return float(re.sub('[^.0-9-]', '', str(val)))
+	if not (val := missing_to_none(re.sub('[^.0-9-]', '', str(val)))):
+		return None
+
+	return float(val)
+
+def safe_cast_decimal(val):
+	"""Cast value as Decimal"""
+	if isinstance(val, (int, float, Decimal)):
+		return Decimal(val)
+
+	if not (val := missing_to_none(re.sub('[^.0-9-]', '', str(val)))):
+		return None
+
+	return Decimal(val)
