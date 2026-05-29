@@ -21,7 +21,7 @@ from botocore.exceptions import ClientError
 from cloudfn.core.data import coalesce
 from cloudfn.core.util import TestHelper
 
-SSM_SUB_PATTERN = re.compile(r'\"\${ssm:(.+?)}\"')
+SSM_SUB_PATTERN = re.compile(r'\"\${sm:(.+?)}\"')
 
 class LambdaHandler:
 	"""Lambda handler decorator"""
