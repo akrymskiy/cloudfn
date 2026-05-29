@@ -151,33 +151,33 @@ class LambdaHandler:
 
 				try:
 					# read config
-					config_text = s3_config_obj.get()['Body']
+					config_text = s3_config_obj.get()['Body'].read().decode()
 					log.log('CNFG', 'Read config from S3', {
 						'bucket': s3_config_obj.bucket_name,
 						'key': s3_config_obj.key
 					})
 
 					# check for ssm vars
-					if ssm_names := set(SSM_SUB_PATTERN.findall(config_text)):
+					if secret_names := set(SSM_SUB_PATTERN.findall(config_text)):
 						log.log('CNFG', 'Attempting to inject secrets', {
-							'secrets': ssm_names
+							'secrets': secret_names
 						})
 
 						# init SSM client
 						sec_client = boto3.client('secretsmanager')
 
 						# try to load secrets and inject
-						for ssm_name in ssm_names:
-							secret_response = sec_client.get_secret_value(SecretId=ssm_name)
+						for secret_name in secret_names:
+							secret_response = sec_client.get_secret_value(SecretId=secret_name)
 							try:
 								# if secret is JSON, inject replacing the string val/quotes
 								json.loads(secret_response['SecretString'])
-								config_text = config_text.replace(f'"${{sm:{ssm_name}}}"', secret_response['SecretString'])
+								config_text = config_text.replace(f'"${{sm:{secret_name}}}"', secret_response['SecretString'])
 							except:
 								# not a JSON, inject as string (leave quotes)
-								config_text = config_text.replace(f'${{sm:{ssm_name}}}', secret_response['SecretString'])
+								config_text = config_text.replace(f'${{sm:{secret_name}}}', secret_response['SecretString'])
 
-					LambdaHandler._config[alias] = json.load(config_text)
+					LambdaHandler._config[alias] = json.loads(config_text)
 
 					
 				except ClientError as ex:
