@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cloudfn"
+version = "0.2.1"
+description = "cloudfn"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Aleksandr Krymskiy", email = "alex@krymskiy.net" }]
+requires-python = ">=3.6.2"
+dependencies = [
+    "cloudfn-core==0.2.1",
+    "cloudfn-aws==0.2.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/akrymskiy/cloudfn"
