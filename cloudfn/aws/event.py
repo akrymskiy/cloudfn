@@ -6,6 +6,8 @@ from hashlib import md5
 import json
 from urllib.parse import unquote_plus
 
+from cloudfn.core.data import coalesce
+
 class Payload():
 	"""Generic Event"""
 	class S3Event():
@@ -31,12 +33,12 @@ class Payload():
 			@property
 			def bucket_name(self):
 				"""Bucket name"""
-				return unquote_plus(self._raw_record.get('s3', '').get('bucket', {}).get('name'))
+				return unquote_plus(self._raw_record.get('s3', {}).get('bucket', {}).get('name'))
 
 			@property
 			def object_key(self):
 				"""Object Key"""
-				return unquote_plus(self._raw_record.get('s3', '').get('object', {}).get('key'))
+				return unquote_plus(self._raw_record.get('s3', {}).get('object', {}).get('key'))
 
 			@property
 			def event_name(self):
@@ -77,6 +79,16 @@ class Payload():
 				return self._raw_record.get(item)
 
 			@property
+			def message_id(self):
+				"""SQS Message Id"""
+				return self._raw_record.get('messageId')
+
+			@property
+			def receipt_handle(self):
+				"""SQS Receipt Handle"""
+				return self._raw_record.get('receiptHandle')
+
+			@property
 			def body(self):
 				"""Return parsed message body"""
 				if body := self._raw_record.get('body'):
@@ -104,6 +116,42 @@ class Payload():
 
 			def __getitem__(self, item):
 				return self._raw_record.get(item)
+
+			@property
+			def event_subscription_arn(self):
+				"""Event Subscription Arn"""
+				return self._raw_record.get('EventSubscriptionArn')
+
+			@property
+			def sns_type(self):
+				"""SNS Type"""
+				return self._raw_record.get('Sns', {}).get('Type')
+
+			@property
+			def sns_message_id(self):
+				"""SNS Message Id"""
+				return self._raw_record.get('Sns', {}).get('MessageId')
+
+			@property
+			def sns_topic_arn(self):
+				"""SNS Topic Arn"""
+				return self._raw_record.get('Sns', {}).get('TopicArn')
+
+			@property
+			def sns_subject(self):
+				"""SNS Subject"""
+				return self._raw_record.get('Sns', {}).get('Subject')
+
+			@property
+			def sns_timestamp(self) -> datetime:
+				"""SNS Timestamp"""
+				return datetime.strptime(self._raw_record.get('Sns', {}).get('Timestamp'), '%Y-%m-%dT%H:%M:%SZ')
+
+			@property
+			def sns_message(self):
+				"""Return parsed message body"""
+				if sns_message := self._raw_record.get('Sns', {}).get('Message'):
+					return json.loads(sns_message)
 
 	class CWSEvent():
 		"""CloudWatch Scheduled Event"""
@@ -160,7 +208,11 @@ class Payload():
 
 
 		# Events that have records
-		event_source = self.first_record.get('eventSource') if isinstance(self.first_record, Mapping) else event.get('source')
+		event_source = (
+			self.first_record.get('eventSource', self.first_record.get('EventSource'))
+			if isinstance(self.first_record, Mapping)
+			else event.get('source')
+		)
 		self.is_s3 = event_source == 'aws:s3'
 		self.is_sqs = event_source == 'aws:sqs'
 		self.is_sns = event_source == 'aws:sns'

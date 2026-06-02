@@ -10,6 +10,7 @@ class AWSInfo():
 
 	@classmethod
 	def _populate(cls):
+		"""Populate the internal structure"""
 		if cls._aws_info is None:
 			cls._aws_info = {
 				'region': (
