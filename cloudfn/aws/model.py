@@ -15,7 +15,9 @@ from traceback import extract_tb
 from urllib.parse import urlsplit
 
 import boto3
+from botocore.exceptions import ClientError
 
+from cloudfn.core.data import coalesce
 from cloudfn.core.util import TestHelper
 
 class LambdaHandler:
@@ -34,7 +36,7 @@ class LambdaHandler:
 			# Check for existence of cfn.json
 			cfn_path = func_path.parent.joinpath('cfn.json')
 			if cfn_path.exists():
-				with open(cfn_path) as f_cfn:
+				with open(cfn_path, 'rt', encoding='utf_8') as f_cfn:
 					cfn = json.load(f_cfn)
 					LambdaHandler._project_name = cfn.get('project_name', func_path.parent.stem)
 					LambdaHandler._config_path_template = cfn.get('config_path_template')
@@ -102,7 +104,8 @@ class LambdaHandler:
 				# If this was not set from cfn.json assume default {project_name}_{function_name}
 				LambdaHandler._project_name = arn_split[6].split('_', 1)[0]
 
-			alias = arn_split[7] if len(arn_split) == 8 else 'Default'
+			alias_arn = arn_split[7] if len(arn_split) == 8 else None
+			alias = coalesce(alias_arn, 'Default')
 
 			# Detect local mode (if needed)
 			if LambdaHandler._local_mode is None:
@@ -143,12 +146,21 @@ class LambdaHandler:
 					s3_config_key
 				)
 
-				LambdaHandler._config[alias] = json.load(s3_config_obj.get()['Body'])
+				try:
+					LambdaHandler._config[alias] = json.load(s3_config_obj.get()['Body'])
 
-				log.log('CNFG', 'Read config from S3', {
-					'bucket': s3_config_obj.bucket_name,
-					'key': s3_config_obj.key
-				})
+					log.log('CNFG', 'Read config from S3', {
+						'bucket': s3_config_obj.bucket_name,
+						'key': s3_config_obj.key
+					})
+				except ClientError as ex:
+					log.log('CNFG', 'Unable to read config from S3', {
+						'bucket': s3_config_obj.bucket_name,
+						'key': s3_config_obj.key,
+						'error_code': ex.response['Error']['Code'],
+						'error_message': ex.response['Error']['Message']
+					})
+					raise
 
 		# Barebone log in case context object is missing
 		if not context:
@@ -165,6 +177,11 @@ class LambdaHandler:
 				_kwargs['log'] = log
 			if 'config' in self._f_sig.parameters:
 				_kwargs['config'] = LambdaHandler._config.get(alias, {})
+			if 'alias' in self._f_sig.parameters:
+				_kwargs['alias'] = alias
+			if 'alias_arn' in self._f_sig.parameters:
+				_kwargs['alias_arn'] = alias_arn
+				
 
 			# Make the call
 			ret_val = self._f(*args, **_kwargs)
