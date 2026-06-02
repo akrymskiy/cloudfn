@@ -58,10 +58,10 @@ class Payload():
 		def __init__(self, payload):
 			self._payload = payload
 
-		# @property
-		# def first(self):
-		# 	"""First SQS Record"""
-		# 	return self._payload.records[0]
+		@property
+		def records(self):
+			"""SQS Records"""
+			return map(Payload.SQSEvent.SQSRecord, self._payload.records)
 
 		@property
 		def first(self):
@@ -86,6 +86,11 @@ class Payload():
 		"""SNS Event"""
 		def __init__(self, payload):
 			self._payload = payload
+
+		@property
+		def records(self):
+			"""NS Records"""
+			return map(Payload.SNSEvent.SNSRecord, self._payload.records)
 
 		@property
 		def first(self):
