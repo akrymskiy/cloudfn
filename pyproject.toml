@@ -17,3 +17,6 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/akrymskiy/cloudfn"
+
+[tool.hatch.build.targets.wheel]
+packages = []
